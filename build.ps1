@@ -61,10 +61,11 @@ if ($Test) {
 }
 
 if ($Installer) {
+    # Install folders first: a Chocolatey shim on PATH has no Languages folder next to it.
     $iscc = @(
-        (Get-Command ISCC.exe -ErrorAction SilentlyContinue | ForEach-Object Source),
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-        "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+        (Get-Command ISCC.exe -ErrorAction SilentlyContinue | ForEach-Object Source)
     ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
     if (-not $iscc) { throw 'ISCC.exe not found: install Inno Setup 6 from https://jrsoftware.org/isinfo.php' }
 
