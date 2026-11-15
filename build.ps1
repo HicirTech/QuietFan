@@ -4,12 +4,14 @@
 .EXAMPLE
     ./build.ps1                  # dist\QuietFan.exe
     ./build.ps1 -Test            # also build and run the unit tests
+    ./build.ps1 -Installer       # also build dist\QuietFan-Setup-<version>.exe (needs Inno Setup 6)
 #>
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
     [string]$Version = '1.0.0',
-    [switch]$Test
+    [switch]$Test,
+    [switch]$Installer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,4 +56,28 @@ if ($Test) {
     Invoke-Csc (@('-target:exe', "-out:$testExe") + $references + $librarySources + $testSources)
     & $testExe
     if ($LASTEXITCODE -ne 0) { throw "$LASTEXITCODE unit test(s) failed" }
+}
+
+if ($Installer) {
+    $iscc = @(
+        (Get-Command ISCC.exe -ErrorAction SilentlyContinue | ForEach-Object Source),
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $iscc) { throw 'ISCC.exe not found: install Inno Setup 6 from https://jrsoftware.org/isinfo.php' }
+
+    $defines = "/DAppVersion=$Version", "/DAppExe=$exe", "/DRepoDir=$root", "/DOutputDir=$dist", "/DIconFile=$icon"
+    # Simplified Chinese ships with Inno Setup 6.5 and later; older versions build an English-only installer.
+    $chineseIsl = Join-Path (Split-Path $iscc) 'Languages\ChineseSimplified.isl'
+    if (Test-Path $chineseIsl) { $defines += "/DChineseIsl=$chineseIsl" }
+    else { Write-Warning 'This Inno Setup has no Simplified Chinese translation; building an English-only installer.' }
+
+    # ISCC reads a script as UTF-8 only when it starts with a byte order mark.
+    $script = Join-Path $obj 'QuietFan.iss'
+    $text = [IO.File]::ReadAllText((Join-Path $root 'installer\QuietFan.iss'))
+    [IO.File]::WriteAllText($script, $text, [Text.UTF8Encoding]::new($true))
+
+    & $iscc /Q @defines $script
+    if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+    Write-Host "Built $(Join-Path $dist "QuietFan-Setup-$Version.exe")"
 }
