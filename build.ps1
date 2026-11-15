@@ -70,10 +70,30 @@ if ($Installer) {
     if (-not $iscc) { throw 'ISCC.exe not found: install Inno Setup 6 from https://jrsoftware.org/isinfo.php' }
 
     $defines = "/DAppVersion=$Version", "/DAppExe=$exe", "/DRepoDir=$root", "/DOutputDir=$dist", "/DIconFile=$icon"
-    # Simplified Chinese ships with Inno Setup 6.5 and later; older versions build an English-only installer.
     $chineseIsl = Join-Path (Split-Path $iscc) 'Languages\ChineseSimplified.isl'
-    if (Test-Path $chineseIsl) { $defines += "/DChineseIsl=$chineseIsl" }
-    else { Write-Warning 'This Inno Setup has no Simplified Chinese translation; building an English-only installer.' }
+    if (-not (Test-Path $chineseIsl)) {
+        # Inno Setup 6 keeps Simplified Chinese among its unofficial translations, which it does not install: fetch
+        # the file for this ISCC version and save it with a BOM, the only way ISCC reads it as UTF-8.
+        $inno = (Get-Item $iscc).VersionInfo
+        $tag = 'is-{0}_{1}_{2}' -f $inno.FileMajorPart, $inno.FileMinorPart, $inno.FileBuildPart
+        $url = "https://raw.githubusercontent.com/jrsoftware/issrc/$tag/Files/Languages/Unofficial/ChineseSimplified.isl"
+        $chineseIsl = Join-Path $obj 'ChineseSimplified.isl'
+        try {
+            $translation = (Invoke-WebRequest -UseBasicParsing -Uri $url).Content
+            [IO.File]::WriteAllText($chineseIsl, $translation, [Text.UTF8Encoding]::new($true))
+        }
+        catch {
+            Write-Warning "Simplified Chinese translation unavailable from $url : $($_.Exception.Message)"
+            $chineseIsl = $null
+        }
+    }
+    if ($chineseIsl) {
+        $defines += "/DChineseIsl=$chineseIsl"
+        Write-Host "Including the Simplified Chinese installer translation: $chineseIsl"
+    }
+    else {
+        Write-Warning 'Building an English-only installer.'
+    }
 
     # ISCC reads a script as UTF-8 only when it starts with a byte order mark.
     $script = Join-Path $obj 'QuietFan.iss'
