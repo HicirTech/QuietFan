@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Inno Setup
+        run: choco upgrade innosetup --no-progress --yes
+
+      - name: Build, test and package
+        run: ./build.ps1 -Test -Installer -Package
+
+      - name: Install and uninstall smoke test
+        run: ./tests/Test-Installer.ps1
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuietFan-${{ github.sha }}
+          path: |
+            dist/QuietFan-Setup-*.exe
+            dist/QuietFan-*-portable.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
