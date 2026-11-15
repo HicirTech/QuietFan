@@ -3,11 +3,13 @@
     Builds QuietFan with the C# compiler that ships with Windows (.NET Framework 4.x); no SDK needed.
 .EXAMPLE
     ./build.ps1                  # dist\QuietFan.exe
+    ./build.ps1 -Test            # also build and run the unit tests
 #>
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '1.0.0'
+    [string]$Version = '1.0.0',
+    [switch]$Test
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,3 +45,13 @@ $appSources = @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Obj
 $exe = Join-Path $dist 'QuietFan.exe'
 Invoke-Csc (@('-optimize+', '-target:winexe', "-win32icon:$icon", "-out:$exe") + $references + $appSources + $assemblyInfo)
 Write-Host "Built $exe ($Version)"
+
+if ($Test) {
+    # The tests link every app source except the UI entry points, so they run headless.
+    $librarySources = $appSources | Where-Object { (Split-Path $_ -Leaf) -notin 'Program.cs', 'TrayApp.cs' }
+    $testSources = @(Get-ChildItem (Join-Path $root 'tests') -Filter *.cs | ForEach-Object FullName)
+    $testExe = Join-Path $obj 'QuietFan.Tests.exe'
+    Invoke-Csc (@('-target:exe', "-out:$testExe") + $references + $librarySources + $testSources)
+    & $testExe
+    if ($LASTEXITCODE -ne 0) { throw "$LASTEXITCODE unit test(s) failed" }
+}
