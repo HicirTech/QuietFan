@@ -30,26 +30,18 @@ function Invoke-Csc([string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "csc failed with exit code $LASTEXITCODE" }
 }
 
-# Inno Setup records its folder in its uninstall entry. Without one, use ISCC from PATH and follow a Chocolatey
-# shim to the real compiler: only the real file has version info and a Languages folder next to it.
-function Find-Iscc {
+# Inno Setup records its folder and version in its uninstall entry; ISCC.exe itself carries no version number.
+function Find-InnoSetup {
     $keys = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1',
             'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1',
             'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1'
     foreach ($key in $keys) {
         $entry = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue
-        if ($null -ne $entry) {
-            $compiler = Join-Path $entry.InstallLocation 'ISCC.exe'
-            if (Test-Path $compiler) { return $compiler }
-        }
+        if ($null -eq $entry) { continue }
+        $compiler = Join-Path $entry.InstallLocation 'ISCC.exe'
+        if (Test-Path $compiler) { return [pscustomobject]@{ Compiler = $compiler; Version = [version]$entry.DisplayVersion } }
     }
-    $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-    if ($null -eq $command) { return $null }
-    $target = & $command.Source --shimgen-noop 2>$null |
-        Select-String -Pattern 'path to executable:\s*(.+)$' |
-        ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }
-    if ($target -and (Test-Path $target)) { return $target }
-    return $command.Source
+    return $null
 }
 
 New-Item -ItemType Directory -Force -Path $dist, $obj | Out-Null
@@ -83,17 +75,16 @@ if ($Test) {
 }
 
 if ($Installer) {
-    $iscc = Find-Iscc
-    if (-not $iscc) { throw 'ISCC.exe not found: install Inno Setup 6 from https://jrsoftware.org/isinfo.php' }
-    $inno = (Get-Item $iscc).VersionInfo
-    Write-Host "Using $iscc (Inno Setup $($inno.FileMajorPart).$($inno.FileMinorPart).$($inno.FileBuildPart))"
+    $inno = Find-InnoSetup
+    if ($null -eq $inno) { throw 'Inno Setup 6 not found: install it from https://jrsoftware.org/isinfo.php' }
+    Write-Host "Using $($inno.Compiler) (Inno Setup $($inno.Version))"
 
     $defines = "/DAppVersion=$Version", "/DAppExe=$exe", "/DRepoDir=$root", "/DOutputDir=$dist", "/DIconFile=$icon"
-    $chineseIsl = Join-Path (Split-Path $iscc) 'Languages\ChineseSimplified.isl'
+    $chineseIsl = Join-Path (Split-Path $inno.Compiler) 'Languages\ChineseSimplified.isl'
     if (-not (Test-Path $chineseIsl)) {
         # Inno Setup 6 keeps Simplified Chinese among its unofficial translations, which it does not install: fetch
-        # the file for this ISCC version and save it with a BOM, the only way ISCC reads it as UTF-8.
-        $tag = 'is-{0}_{1}_{2}' -f $inno.FileMajorPart, $inno.FileMinorPart, $inno.FileBuildPart
+        # the file for this version and save it with a BOM, the only way ISCC reads it as UTF-8.
+        $tag = 'is-{0}_{1}_{2}' -f $inno.Version.Major, $inno.Version.Minor, $inno.Version.Build
         $url = "https://raw.githubusercontent.com/jrsoftware/issrc/$tag/Files/Languages/Unofficial/ChineseSimplified.isl"
         $chineseIsl = Join-Path $obj 'ChineseSimplified.isl'
         try {
@@ -118,7 +109,7 @@ if ($Installer) {
     $text = [IO.File]::ReadAllText((Join-Path $root 'installer\QuietFan.iss'))
     [IO.File]::WriteAllText($script, $text, [Text.UTF8Encoding]::new($true))
 
-    & $iscc /Q @defines $script
+    & $inno.Compiler /Q @defines $script
     if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
     Write-Host "Built $(Join-Path $dist "QuietFan-Setup-$Version.exe")"
 }
