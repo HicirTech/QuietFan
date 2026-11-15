@@ -25,6 +25,7 @@ namespace QuietFan.Tests
             {
                 Settings saved = new Settings();
                 saved.Policy = Policy.Quiet;
+                saved.Language = UiLanguage.English;
                 saved.Dirty = true;
                 saved.OrigScheme = Guid.NewGuid();
                 saved.OrigAc = 4;
@@ -33,6 +34,7 @@ namespace QuietFan.Tests
 
                 Settings loaded = Settings.Load(folder);
                 Check.Equal(saved.Policy, loaded.Policy, "policy");
+                Check.Equal(saved.Language, loaded.Language, "language");
                 Check.Equal(saved.Dirty, loaded.Dirty, "dirty");
                 Check.Equal(saved.OrigScheme, loaded.OrigScheme, "origScheme");
                 Check.Equal(saved.OrigAc, loaded.OrigAc, "origAc");
@@ -58,6 +60,7 @@ namespace QuietFan.Tests
                 File.WriteAllLines(Path.Combine(folder, Settings.FileName), new[]
                 {
                     "policy=7",
+                    "language=9",
                     "dirty=yes",
                     "origScheme=not-a-guid",
                     "origAc=99",
@@ -76,6 +79,7 @@ namespace QuietFan.Tests
         static void AssertDefaults(Settings settings)
         {
             Check.Equal(Policy.Smart, settings.Policy, "policy");
+            Check.Equal(UiLanguage.Auto, settings.Language, "language");
             Check.Equal(false, settings.Dirty, "dirty");
             Check.Equal(Guid.Empty, settings.OrigScheme, "origScheme");
             Check.Equal(Boost.Aggressive, settings.OrigAc, "origAc");

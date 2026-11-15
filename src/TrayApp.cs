@@ -21,7 +21,7 @@ namespace QuietFan
         const float WarmCelsius = 60f;
         const float HotCelsius = 75f;
 
-        static readonly bool Chinese = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "zh";
+        static bool chinese;
 
         readonly NotifyIcon tray = new NotifyIcon();
         readonly ContextMenuStrip menu = new ContextMenuStrip();
@@ -55,6 +55,7 @@ namespace QuietFan
         public TrayApp()
         {
             cfg = Settings.Load(Settings.DefaultFolder);
+            chinese = UsesChinese(cfg.Language);
             atkOk = Atk.Open();
             fanModeSupported = atkOk && Atk.FanMode() >= 0;
             CaptureOriginalBoost();
@@ -90,9 +91,15 @@ namespace QuietFan
             Log.Write("--restore ac=" + saved.OrigAc + " dc=" + saved.OrigDc + " rc=" + result);
         }
 
-        static string T(string chinese, string english)
+        static string T(string chineseText, string englishText)
         {
-            return Chinese ? chinese : english;
+            return chinese ? chineseText : englishText;
+        }
+
+        static bool UsesChinese(UiLanguage language)
+        {
+            if (language == UiLanguage.Auto) return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "zh";
+            return language == UiLanguage.Chinese;
         }
 
         // ---------- original boost values ----------
@@ -228,6 +235,11 @@ namespace QuietFan
 
             autoStartItem = AddItem(T("开机自动启动", "Start with Windows"), delegate { ToggleAutoStart(); });
             autoStartItem.Checked = AutoStartEnabled();
+            ToolStripMenuItem language = new ToolStripMenuItem("Language / 语言");
+            AddLanguageItem(language, T("自动(跟随 Windows 显示语言)", "Auto (Windows display language)"), UiLanguage.Auto);
+            AddLanguageItem(language, "中文", UiLanguage.Chinese);
+            AddLanguageItem(language, "English", UiLanguage.English);
+            menu.Items.Add(language);
             AddItem(T("说明", "About"), delegate { ShowHelp(); });
             AddItem(T("退出(恢复原来的睿频设置)", "Exit (restore boost setting)"), delegate { ExitThread(); });
         }
@@ -246,6 +258,14 @@ namespace QuietFan
             item.Click += onClick;
             menu.Items.Add(item);
             return item;
+        }
+
+        void AddLanguageItem(ToolStripMenuItem parent, string text, UiLanguage language)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text);
+            item.Checked = cfg.Language == language;
+            item.Click += delegate { SetLanguage(language); };
+            parent.DropDownItems.Add(item);
         }
 
         void OnTrayMouseUp(object sender, MouseEventArgs e)
@@ -320,6 +340,17 @@ namespace QuietFan
             Log.Write("policy -> " + policy);
             Tick();
             tray.ShowBalloonTip(BalloonMs, T("安静策略:", "Quiet policy: ") + PolicyName(policy), PolicyDescription(policy), ToolTipIcon.Info);
+        }
+
+        void SetLanguage(UiLanguage language)
+        {
+            cfg.Language = language;
+            cfg.Save(Settings.DefaultFolder);
+            chinese = UsesChinese(language);
+            Log.Write("language -> " + language);
+            while (menu.Items.Count > 0) menu.Items[0].Dispose();
+            BuildMenu();
+            Tick();
         }
 
         void SetFanMode(int mode)

@@ -13,4 +13,4 @@ All notable changes to QuietFan are listed here. Versions follow [Semantic Versi
 - Restores the original boost setting on exit, after a crash or shutdown, and on uninstall.
 - `--exit` and `--restore` command-line options.
 - Per-user installer with uninstaller, portable zip and SHA-256 checksums.
-- Simplified Chinese and English user interface.
+- Simplified Chinese and English menus, following the Windows display language or the Language / 语言 choice.

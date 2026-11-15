@@ -41,8 +41,9 @@ which is why the default Smart policy turns boost back on under sustained load.
 - ASUS fan profile switching: Whisper, Standard or Performance, the same setting as in MyASUS.
 - Optional start with Windows.
 - Restores the original boost setting when it exits, on the next start after a crash or shutdown, and on uninstall.
-- Per-user install, no administrator rights, no background service. Menus follow the Windows display language
-  (Simplified Chinese or English).
+- Per-user install, no administrator rights, no background service.
+- Menus in Simplified Chinese or English: Auto follows the Windows display language, or pick one under
+  Language / 语言.
 
 ## Install
 
@@ -60,7 +61,8 @@ Click the tray icon (left or right button) to open the menu:
 - the current temperature, fan speed, CPU load and boost state;
 - the boost policy: Smart, Quiet or Full;
 - the ASUS fan profile: Whisper, Standard or Performance (disabled on machines without the ASUS interface);
-- Start with Windows, About, and Exit, which restores the original boost setting.
+- Start with Windows; Language / 语言 (Auto, 中文 or English); About; and Exit, which restores the original boost
+  setting.
 
 Settings and a log are kept in `%APPDATA%\QuietFan`.
 
@@ -158,7 +160,8 @@ QuietFan 是一个 Windows 托盘小工具,让 ASUS Vivobook 笔记本的风扇�
 - 切换 ASUS 风扇模式:静音、标准、性能,和 MyASUS 里是同一个设置。
 - 可选开机自动启动。
 - 退出时、崩溃或关机后的下次启动时、以及卸载时,都会恢复原来的睿频设置。
-- 按用户安装,不需要管理员权限,没有后台服务。菜单跟随 Windows 显示语言(简体中文或英文)。
+- 按用户安装,不需要管理员权限,没有后台服务。
+- 菜单支持简体中文和英文:默认跟随 Windows 显示语言,也可以在托盘菜单的“Language / 语言”里选择。
 
 ### 安装
 

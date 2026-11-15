@@ -10,6 +10,7 @@ namespace QuietFan
         public const string FileName = "settings.ini";
 
         public Policy Policy = Policy.Smart;
+        public UiLanguage Language = UiLanguage.Auto;
         public bool Dirty;                    // boost changed by QuietFan and not restored yet
         public Guid OrigScheme = Guid.Empty;  // power plan the original values belong to
         public uint OrigAc = Boost.Aggressive;
@@ -40,6 +41,7 @@ namespace QuietFan
             File.WriteAllLines(Path.Combine(folder, FileName), new[]
             {
                 "policy=" + ((int)Policy).ToString(CultureInfo.InvariantCulture),
+                "language=" + ((int)Language).ToString(CultureInfo.InvariantCulture),
                 "dirty=" + (Dirty ? "1" : "0"),
                 "origScheme=" + OrigScheme.ToString(),
                 "origAc=" + OrigAc.ToString(CultureInfo.InvariantCulture),
@@ -57,6 +59,9 @@ namespace QuietFan
             {
                 case "policy":
                     if (isNumber && Enum.IsDefined(typeof(Policy), number)) Policy = (Policy)number;
+                    break;
+                case "language":
+                    if (isNumber && Enum.IsDefined(typeof(UiLanguage), number)) Language = (UiLanguage)number;
                     break;
                 case "dirty":
                     Dirty = value == "1";
